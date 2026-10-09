@@ -1,26 +1,28 @@
 /* ==========================================================================
-   AegisAI - DevSecOps Self-Healing Agent Stylesheet
-   Theme: Cyberpunk Dark / Security Operations Center (SOC)
+   AegisAI - DevSecOps High-Tech Cybersecurity & Self-Healing Theme
+   Features: Light/Dark Theme Variables, Glassmorphism, Neon Glows,
+             Scanlines, Code Diffs, and Interactive Pipeline Animations
    ========================================================================== */
 
-/* --- ROOT DESIGN TOKENS --- */
+/* --- THEME VARIABLES --- */
 :root {
-  /* Color Palette */
-  --bg-primary: #080c14;
-  --bg-secondary: #0f172a;
-  --bg-tertiary: #1e293b;
-  --bg-card: rgba(15, 23, 42, 0.75);
-  --bg-card-hover: rgba(30, 41, 59, 0.85);
+  /* DARK THEME (Default) */
+  --bg-primary: #070a12;
+  --bg-secondary: #0c1220;
+  --bg-tertiary: #131d33;
+  --bg-card: rgba(12, 18, 32, 0.78);
+  --bg-card-hover: rgba(19, 29, 51, 0.88);
+  --bg-input: rgba(4, 7, 15, 0.85);
 
-  /* Accents */
+  /* Accents & Neon Glows */
   --accent-cyan: #06b6d4;
   --accent-cyan-glow: rgba(6, 182, 212, 0.35);
   --accent-purple: #a855f7;
   --accent-purple-glow: rgba(168, 85, 247, 0.35);
   --accent-emerald: #10b981;
-  --accent-emerald-glow: rgba(16, 185, 129, 0.3);
+  --accent-emerald-glow: rgba(16, 185, 129, 0.35);
   --accent-rose: #f43f5e;
-  --accent-rose-glow: rgba(244, 63, 94, 0.3);
+  --accent-rose-glow: rgba(244, 63, 94, 0.35);
   --accent-amber: #f59e0b;
 
   /* Text Colors */
@@ -34,11 +36,60 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-  --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --radius-xl: 20px;
+  --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 25px -4px rgba(6, 182, 212, 0.25);
+
+  /* Diff / Terminal */
+  --terminal-bg: #03060d;
+  --diff-bg: #040813;
+  --diff-del-bg: rgba(244, 63, 94, 0.14);
+  --diff-del-text: #fb7185;
+  --diff-del-border: #f43f5e;
+  --diff-add-bg: rgba(16, 185, 129, 0.14);
+  --diff-add-text: #34d399;
+  --diff-add-border: #10b981;
 
   /* Fonts */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'Fira Code', 'JetBrains Mono', monospace;
+}
+
+/* --- LIGHT THEME OVERRIDES --- */
+[data-theme="light"] {
+  --bg-primary: #f1f5f9;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e2e8f0;
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-card-hover: rgba(248, 250, 252, 0.95);
+  --bg-input: #ffffff;
+
+  --accent-cyan: #0284c7;
+  --accent-cyan-glow: rgba(2, 132, 199, 0.2);
+  --accent-purple: #9333ea;
+  --accent-purple-glow: rgba(147, 51, 234, 0.2);
+  --accent-emerald: #059669;
+  --accent-emerald-glow: rgba(5, 150, 105, 0.2);
+  --accent-rose: #e11d48;
+  --accent-rose-glow: rgba(225, 29, 72, 0.2);
+  --accent-amber: #d97706;
+
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #94a3b8;
+
+  --border-subtle: rgba(15, 23, 42, 0.1);
+  --border-active: rgba(2, 132, 199, 0.5);
+  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+
+  --terminal-bg: #0f172a;
+  --diff-bg: #f8fafc;
+  --diff-del-bg: rgba(225, 29, 72, 0.1);
+  --diff-del-text: #be123c;
+  --diff-del-border: #e11d48;
+  --diff-add-bg: rgba(5, 150, 105, 0.1);
+  --diff-add-text: #047857;
+  --diff-add-border: #059669;
 }
 
 /* --- BASE STYLES --- */
@@ -46,6 +97,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
 
 body {
@@ -55,62 +107,55 @@ body {
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
-  background-image: 
-    radial-gradient(circle at 15% 15%, rgba(168, 85, 247, 0.07) 0%, transparent 40%),
-    radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.07) 0%, transparent 40%);
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(168, 85, 247, 0.09) 0%, transparent 45%),
+    radial-gradient(circle at 90% 90%, rgba(6, 182, 212, 0.09) 0%, transparent 45%);
   background-attachment: fixed;
 }
 
-/* --- TYPOGRAPHY & CODE --- */
 .code-font {
   font-family: var(--font-mono);
-}
-
-h1, h2, h3, h4 {
-  font-weight: 600;
-  color: var(--text-main);
 }
 
 /* --- GLASSMORPHISM CARDS --- */
 .glass-card {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
-  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="light"] .glass-card:hover {
+  border-color: rgba(0, 0, 0, 0.16);
 }
 
 /* --- GLOW EFFECTS --- */
 .glow-cyan {
-  box-shadow: 0 0 20px -3px var(--accent-cyan-glow);
+  box-shadow: 0 0 24px -4px var(--accent-cyan-glow);
 }
 
 .glow-purple {
-  box-shadow: 0 0 20px -3px var(--accent-purple-glow);
+  box-shadow: 0 0 24px -4px var(--accent-purple-glow);
 }
 
 .glow-emerald {
-  box-shadow: 0 0 20px -3px var(--accent-emerald-glow);
+  box-shadow: 0 0 24px -4px var(--accent-emerald-glow);
 }
 
-.glow-rose {
-  box-shadow: 0 0 20px -3px var(--accent-rose-glow);
-}
-
-/* --- CUSTOM SCROLLBARS --- */
+/* --- CUSTOM SCROLLBAR --- */
 .custom-scroll::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 .custom-scroll::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--bg-secondary);
 }
 
 .custom-scroll::-webkit-scrollbar-thumb {
@@ -118,15 +163,13 @@ h1, h2, h3, h4 {
   border-radius: 4px;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
-
 /* --- PIPELINE STEPPER --- */
 .step-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
 }
 
 .step-card::before {
@@ -142,8 +185,8 @@ h1, h2, h3, h4 {
 
 .step-card.active {
   border-color: var(--accent-cyan) !important;
-  background: rgba(6, 182, 212, 0.1) !important;
-  box-shadow: 0 0 15px -3px var(--accent-cyan-glow);
+  background: rgba(6, 182, 212, 0.12) !important;
+  box-shadow: 0 0 20px -3px var(--accent-cyan-glow);
 }
 
 .step-card.active::before {
@@ -152,7 +195,7 @@ h1, h2, h3, h4 {
 
 .step-card.completed {
   border-color: var(--accent-emerald) !important;
-  background: rgba(16, 185, 129, 0.08) !important;
+  background: rgba(16, 185, 129, 0.1) !important;
 }
 
 .step-card.completed::before {
@@ -172,7 +215,7 @@ h1, h2, h3, h4 {
   letter-spacing: 0.03em;
 }
 
-.badge-critical, .badge-high {
+.badge-high, .badge-critical {
   background: rgba(244, 63, 94, 0.15);
   color: var(--accent-rose);
   border: 1px solid rgba(244, 63, 94, 0.3);
@@ -184,7 +227,7 @@ h1, h2, h3, h4 {
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
-.badge-low, .badge-success {
+.badge-success {
   background: rgba(16, 185, 129, 0.15);
   color: var(--accent-emerald);
   border: 1px solid rgba(16, 185, 129, 0.3);
@@ -198,14 +241,14 @@ h1, h2, h3, h4 {
 
 /* --- DIFF CODE BLOCK STYLING --- */
 .diff-container {
-  background: #050811;
+  background: var(--diff-bg);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .diff-header {
-  background: rgba(15, 23, 42, 0.9);
+  background: var(--bg-tertiary);
   padding: 6px 12px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
@@ -224,33 +267,34 @@ h1, h2, h3, h4 {
 
 .diff-del {
   display: block;
-  background: rgba(244, 63, 94, 0.12);
-  color: #fb7185;
-  padding: 1px 6px;
-  border-left: 2px solid var(--accent-rose);
+  background: var(--diff-del-bg);
+  color: var(--diff-del-text);
+  padding: 2px 8px;
+  border-left: 3px solid var(--diff-del-border);
   border-radius: 2px;
 }
 
 .diff-add {
   display: block;
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  padding: 1px 6px;
-  border-left: 2px solid var(--accent-emerald);
+  background: var(--diff-add-bg);
+  color: var(--diff-add-text);
+  padding: 2px 8px;
+  border-left: 3px solid var(--diff-add-border);
   border-radius: 2px;
 }
 
-/* --- TERMINAL & DOCKER CONSOLE --- */
+/* --- TERMINAL WINDOW --- */
 .terminal-window {
-  background: #04070d;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--terminal-bg);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
-/* Scanline effect for hacker/SOC feel */
+/* Retro CRT / SOC Scanline effect */
 .terminal-window::after {
   content: " ";
   display: block;
@@ -260,11 +304,11 @@ h1, h2, h3, h4 {
   background-size: 100% 4px;
   z-index: 10;
   pointer-events: none;
-  opacity: 0.6;
+  opacity: 0.45;
 }
 
 .terminal-header {
-  background: #0b1120;
+  background: var(--bg-secondary);
   padding: 8px 14px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
@@ -297,33 +341,11 @@ h1, h2, h3, h4 {
 }
 
 /* --- ANIMATIONS --- */
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(0.9);
-  }
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.85); }
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s infinite ease-in-out;
-}
-
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(1000%); }
-}
-
-.scanline-sweep {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 10px;
-  background: linear-gradient(to bottom, transparent, rgba(6, 182, 212, 0.15), transparent);
-  animation: scanline 8s linear infinite;
-  pointer-events: none;
+.animate-pulse-dot {
+  animation: pulse-dot 2s infinite ease-in-out;
 }
