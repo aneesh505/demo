@@ -1,13 +1,425 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AegisAI - Self-Healing DevSecOps Pipeline</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+    }
+    .code-font {
+      font-family: 'Fira Code', monospace;
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.6);
+      border-radius: 4px;
+    }
+    .glow-purple {
+      box-shadow: 0 0 20px -5px rgba(168, 85, 247, 0.3);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.3);
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .animate-pulse-dot {
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div>
-        Hello world
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-lg glow-cyan">
+          <i data-lucide="shield-alert" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-cyan-400 via-purple-300 to-indigo-400 bg-clip-text text-transparent">
+              AutoSec Agent
+            </span>
+            <span class="text-xs uppercase px-2 py-0.5 rounded-full font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              v1.0-agentic
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Autonomous Vulnerability Discovery & Docker Sandbox Remediation</p>
+        </div>
+      </div>
+
+      <!-- Repo target & quick trigger -->
+      <div class="flex items-center space-x-4">
+        <div class="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
+          <i data-lucide="git-branch" class="w-4 h-4 text-purple-400"></i>
+          <span>target: <strong class="text-slate-100">github.com/my-org/vulnerable-api</strong> (main)</span>
+        </div>
+        <button id="scanTriggerBtn" onclick="startSelfHealingRun()" class="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-sm transition-all shadow-lg glow-purple">
+          <i data-lucide="play" class="w-4 h-4"></i>
+          <span>Trigger Agent Loop</span>
+        </button>
+      </div>
     </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- PIPELINE STATUS STEPPER -->
+    <div class="glass-card rounded-2xl p-5 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i> Live Agentic Execution State
+        </h2>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-dot"></span>
+          <span id="pipelineStatusText" class="text-xs font-mono text-emerald-400">STATUS: IDLE / READY</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <!-- Step 1 -->
+        <div id="step-1" class="step-card p-3 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center space-x-3 transition-all">
+          <div class="step-icon w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs">1</div>
+          <div>
+            <p class="text-xs font-semibold text-slate-200">AST & Pattern Scan</p>
+            <p class="text-[11px] text-slate-400">Bandit / Semgrep</p>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="step-2" class="step-card p-3 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center space-x-3 transition-all">
+          <div class="step-icon w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs">2</div>
+          <div>
+            <p class="text-xs font-semibold text-slate-200">Taint Analysis</p>
+            <p class="text-[11px] text-slate-400">Data-flow & CWE Map</p>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="step-3" class="step-card p-3 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center space-x-3 transition-all">
+          <div class="step-icon w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs">3</div>
+          <div>
+            <p class="text-xs font-semibold text-slate-200">LLM Patch Generation</p>
+            <p class="text-[11px] text-slate-400">Fix + Exploit Test</p>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div id="step-4" class="step-card p-3 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center space-x-3 transition-all">
+          <div class="step-icon w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs">4</div>
+          <div>
+            <p class="text-xs font-semibold text-slate-200">Docker Sandbox Verify</p>
+            <p class="text-[11px] text-slate-400">Exploit & Unit Tests</p>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div id="step-5" class="step-card p-3 rounded-xl border border-slate-800 bg-slate-900/60 flex items-center space-x-3 transition-all">
+          <div class="step-icon w-8 h-8 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs">5</div>
+          <div>
+            <p class="text-xs font-semibold text-slate-200">Pull Request Submit</p>
+            <p class="text-[11px] text-slate-400">Proof Evidence Attached</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS OVERVIEW CARDS -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="glass-card p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-400">Vulnerabilities Detected</p>
+          <p id="statDetected" class="text-2xl font-bold text-rose-400 mt-1">3</p>
+        </div>
+        <div class="p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          <i data-lucide="bug" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-400">Patches Sandbox-Proven</p>
+          <p id="statProven" class="text-2xl font-bold text-emerald-400 mt-1">2</p>
+        </div>
+        <div class="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <i data-lucide="shield-check" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-400">Sandbox Re-runs / Retries</p>
+          <p id="statRetries" class="text-2xl font-bold text-amber-400 mt-1">1</p>
+        </div>
+        <div class="p-2.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 rounded-xl flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-400">PRs Ready for Approval</p>
+          <p id="statPRs" class="text-2xl font-bold text-cyan-400 mt-1">2</p>
+        </div>
+        <div class="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          <i data-lucide="git-pull-request" class="w-5 h-5"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPLIT CONTENT AREA -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- LEFT COLUMN: VULNERABILITY FINDINGS & DIFF (7 cols) -->
+      <div class="lg:col-span-7 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400"></i> Discovered Security Vulnerabilities
+          </h3>
+          <span class="text-xs text-slate-400">Showing 3 findings</span>
+        </div>
+
+        <!-- Vulnerability Card 1: SQL Injection -->
+        <div class="glass-card rounded-xl border-l-4 border-rose-500 p-5 space-y-3">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1">
+              <div class="flex items-center space-x-2">
+                <span class="px-2 py-0.5 text-xs font-semibold rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">HIGH</span>
+                <span class="px-2 py-0.5 text-xs font-mono rounded bg-slate-800 text-slate-300">CWE-89: SQL Injection</span>
+                <span class="text-xs text-slate-400 font-mono">app/routes/users.py:42</span>
+              </div>
+              <h4 class="text-sm font-semibold text-slate-100">Unescaped string formatting in raw SQL query</h4>
+            </div>
+            <span class="text-xs font-mono px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified Fixed
+            </span>
+          </div>
+
+          <p class="text-xs text-slate-300">
+            User input directly concatenated into database query without parameterization, enabling arbitrary data extraction via <code class="bg-slate-900 px-1 py-0.5 rounded text-rose-300 code-font">' OR '1'='1</code>.
+          </p>
+
+          <!-- Code Diff Accordion / Preview -->
+          <div class="bg-slate-950/90 rounded-lg border border-slate-800 overflow-hidden">
+            <div class="px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 code-font">
+              <span>Proposed AST-Safe Patch (Diff)</span>
+              <span class="text-emerald-400">+ parameterized query</span>
+            </div>
+            <pre class="p-3 text-xs code-font overflow-x-auto custom-scroll leading-relaxed">
+<span class="text-rose-400">- cursor.execute(f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'")</span>
+<span class="text-emerald-400">+ cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))</span></pre>
+          </div>
+
+          <!-- Proof and Actions -->
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+            <div class="flex items-center gap-2 text-slate-400">
+              <i data-lucide="box" class="w-4 h-4 text-cyan-400"></i>
+              <span>Docker Exploit Test: <strong class="text-emerald-400">PASSED (Exploit Neutralized)</strong></span>
+            </div>
+            <a href="#" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
+              View PR #14 <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Vulnerability Card 2: Command Injection -->
+        <div class="glass-card rounded-xl border-l-4 border-rose-500 p-5 space-y-3">
+          <div class="flex items-start justify-between">
+            <div class="space-y-1">
+              <div class="flex items-center space-x-2">
+                <span class="px-2 py-0.5 text-xs font-semibold rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">HIGH</span>
+                <span class="px-2 py-0.5 text-xs font-mono rounded bg-slate-800 text-slate-300">CWE-78: OS Command Injection</span>
+                <span class="text-xs text-slate-400 font-mono">app/services/pdf.py:18</span>
+              </div>
+              <h4 class="text-sm font-semibold text-slate-100">Direct shell execution with untrusted filename</h4>
+            </div>
+            <span class="text-xs font-mono px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified Fixed
+            </span>
+          </div>
+
+          <p class="text-xs text-slate-300">
+            Passing untrusted arguments to <code class="bg-slate-900 px-1 py-0.5 rounded text-rose-300 code-font">os.system()</code> / <code class="bg-slate-900 px-1 py-0.5 rounded text-rose-300 code-font">shell=True</code> allows arbitrary RCE via metacharacters like <code class="bg-slate-900 px-1 py-0.5 rounded text-rose-300 code-font">; rm -rf /</code>.
+          </p>
+
+          <div class="bg-slate-950/90 rounded-lg border border-slate-800 overflow-hidden">
+            <div class="px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 code-font">
+              <span>Proposed AST-Safe Patch (Diff)</span>
+              <span class="text-emerald-400">+ subprocess list arg (shell=False)</span>
+            </div>
+            <pre class="p-3 text-xs code-font overflow-x-auto custom-scroll leading-relaxed">
+<span class="text-rose-400">- os.system(f"wkhtmltopdf {input_url} {output_path}")</span>
+<span class="text-emerald-400">+ subprocess.run(["wkhtmltopdf", shlex.quote(input_url), output_path], check=True, shell=False)</span></pre>
+          </div>
+
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+            <div class="flex items-center gap-2 text-slate-400">
+              <i data-lucide="box" class="w-4 h-4 text-cyan-400"></i>
+              <span>Docker Exploit Test: <strong class="text-emerald-400">PASSED (Payload '; whoami' Blocked)</strong></span>
+            </div>
+            <a href="#" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
+              View PR #15 <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: REASONING FEED & SANDBOX DOCKER CONSOLE (5 cols) -->
+      <div class="lg:col-span-5 space-y-4">
+        
+        <!-- Live Agent Reasoning & Steps -->
+        <div class="glass-card rounded-xl p-4 flex flex-col h-80">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <i data-lucide="brain-circuit" class="w-4 h-4 text-purple-400"></i> Agent Reasoning Trace
+            </h3>
+            <span class="text-[11px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">Claude 3.7 Sonnet</span>
+          </div>
+
+          <div id="agentLogs" class="flex-1 overflow-y-auto space-y-2.5 p-2 text-xs code-font custom-scroll text-slate-300">
+            <div class="text-slate-500">[10:42:01] Initializing Agent context and PyGithub repo clone...</div>
+            <div class="text-cyan-400">[10:42:04] Running Bandit & Semgrep over 48 source files...</div>
+            <div class="text-amber-400">[10:42:07] ! Found B608: Hardcoded SQL string formatting in app/routes/users.py:42</div>
+            <div class="text-purple-300">[10:42:09] Agent formulating defense-in-depth parameterized patch & pytest exploit script...</div>
+            <div class="text-slate-400">[10:42:12] Spinning up isolated ephemeral Docker container (sandbox-d19f)...</div>
+            <div class="text-rose-400">[10:42:15] Baseline test executed: Exploit successfully bypassed authentication.</div>
+            <div class="text-emerald-400">[10:42:18] Patch applied in sandbox: Exploit returned 401 Unauthorized. Regression tests passed.</div>
+            <div class="text-cyan-300">[10:42:20] Git branch 'fix/cwe-89-sql-injection' created. PR #14 generated with sandbox audit report.</div>
+          </div>
+        </div>
+
+        <!-- Docker Sandbox Console -->
+        <div class="glass-card rounded-xl p-4 flex flex-col h-80 bg-black/80">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div class="flex items-center space-x-2">
+              <div class="flex space-x-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+              </div>
+              <span class="text-xs font-mono text-slate-400 pl-2">docker-sandbox: runner@ephemeral-node</span>
+            </div>
+            <span class="text-[10px] font-mono text-slate-500">isolated-net=none</span>
+          </div>
+
+          <div id="sandboxTerminal" class="flex-1 overflow-y-auto p-2 text-[11px] code-font custom-scroll text-slate-300 space-y-1">
+            <p class="text-slate-500">$ docker run --rm -v /tmp/patch_14:/workspace sandbox:py311</p>
+            <p class="text-slate-400">> Running exploit test suite: test_cwe89_exploit.py</p>
+            <p class="text-rose-400">> [ATTACK SIMULATION] Payload: admin'--</p>
+            <p class="text-rose-400">> [ATTACK RESULT] HTTP 200 OK - Admin Token Leaked (VULNERABLE)</p>
+            <p class="text-cyan-400">> [APPLYING PATCH] Hot-reloading AST-sanitized file...</p>
+            <p class="text-slate-400">> Re-running attack simulation...</p>
+            <p class="text-emerald-400">> [ATTACK SIMULATION] Payload: admin'--</p>
+            <p class="text-emerald-400">> [ATTACK RESULT] HTTP 401 Unauthorized - Query Parameterized (SAFE)</p>
+            <p class="text-emerald-300 font-bold">> STATUS: VERIFICATION SUCCEEDED (Exit Code 0)</p>
+            <p class="text-slate-500">> Container destroyed. Clean teardown.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- JAVASCRIPT FOR INTERACTIVITY & ANIMATION -->
+  <script>
+    // Initialize icons
+    lucide.createIcons();
+
+    // Simulated interactive runner for presentation / hackathon demo
+    function startSelfHealingRun() {
+      const btn = document.getElementById('scanTriggerBtn');
+      const statusText = document.getElementById('pipelineStatusText');
+      const agentLogs = document.getElementById('agentLogs');
+      const terminal = document.getElementById('sandboxTerminal');
+
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      const steps = [
+        { id: 'step-1', name: 'AST & Pattern Scan (Bandit/Semgrep)', log: 'Scanning target branch AST for dangerous calls...', term: '$ bandit -r . -f json' },
+        { id: 'step-2', name: 'Taint Analysis & CWE Mapping', log: 'Traced untrusted input parameter "username" to database execute call.', term: '$ semgrep --config auto' },
+        { id: 'step-3', name: 'LLM Multi-turn Patch Synthesis', log: 'Synthesizing defense-in-depth parameterized SQL query & test suite.', term: '> Generating patch diff & exploit verification test...' },
+        { id: 'step-4', name: 'Ephemeral Docker Sandbox Execution', log: 'Verifying exploit against patched code inside disposable container.', term: '$ docker run --rm -t sec-sandbox pytest tests/exploit_verify.py' },
+        { id: 'step-5', name: 'Pull Request Creation', log: 'Fix confirmed! Pushing branch & creating pull request with test proof evidence.', term: '> gh pr create --title "fix(security): parameterize SQL query" --body "Proven safe in sandbox."' }
+      ];
+
+      let currentStep = 0;
+      statusText.innerText = "STATUS: AGENT EXECUTING...";
+      statusText.className = "text-xs font-mono text-cyan-400";
+
+      // Reset step styles
+      document.querySelectorAll('.step-card').forEach(el => {
+        el.classList.remove('border-cyan-500', 'bg-cyan-950/40', 'border-emerald-500', 'bg-emerald-950/40');
+      });
+
+      const interval = setInterval(() => {
+        if (currentStep < steps.length) {
+          const stepObj = steps[currentStep];
+          const stepEl = document.getElementById(stepObj.id);
+
+          // Highlight current step
+          stepEl.classList.add('border-cyan-500', 'bg-cyan-950/40');
+
+          // Append logs
+          const logItem = document.createElement('div');
+          logItem.className = 'text-cyan-300';
+          logItem.innerText = `[${new Date().toLocaleTimeString()}] ${stepObj.log}`;
+          agentLogs.appendChild(logItem);
+          agentLogs.scrollTop = agentLogs.scrollHeight;
+
+          // Append terminal output
+          const termItem = document.createElement('p');
+          termItem.className = 'text-slate-300';
+          termItem.innerText = stepObj.term;
+          terminal.appendChild(termItem);
+          terminal.scrollTop = terminal.scrollHeight;
+
+          currentStep++;
+        } else {
+          clearInterval(interval);
+          statusText.innerText = "STATUS: RUN COMPLETED (ALL PATCHES VERIFIED)";
+          statusText.className = "text-xs font-mono text-emerald-400";
+          btn.disabled = false;
+          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+          // Mark all steps green
+          document.querySelectorAll('.step-card').forEach(el => {
+            el.classList.remove('border-cyan-500', 'bg-cyan-950/40');
+            el.classList.add('border-emerald-500', 'bg-emerald-950/30');
+          });
+        }
+      }, 1500);
+    }
+  </script>
 </body>
 </html>
