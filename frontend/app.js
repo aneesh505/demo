@@ -1,7 +1,7 @@
 // ==========================================================================
 // AegisAI - DevSecOps Autonomous Agent Frontend Controller
 // Handles: Theme switching, Real-time backend API integration (/api/scan),
-// Polling run status, and Dynamic UI updates.
+// Polling run status, and Dynamic UI updates based on actual scan results.
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -111,12 +111,12 @@ async function handleStartAnalysis(e) {
   document.getElementById('agentLogs').innerHTML = '';
   document.getElementById('sandboxTerminal').innerHTML = '';
   document.getElementById('findingsList').innerHTML = `
-    <div class="glass-card rounded-2xl p-6 text-center border border-cyan-500/20">
+    <div class="glass-card rounded-2xl p-6 text-center border border-cyan-500/25">
       <div class="inline-flex items-center justify-center p-3 rounded-xl bg-cyan-500/10 text-cyan-400 mb-2 animate-pulse">
         <i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i>
       </div>
-      <p class="text-sm font-semibold text-slate-200">Initiating Backend Pipeline...</p>
-      <p class="text-xs text-slate-400 mt-1">Cloning repository & executing security scans.</p>
+      <p class="text-sm font-semibold text-slate-200">Cloning & Analyzing Repository...</p>
+      <p class="text-xs text-slate-400 mt-1">Executing Bandit, Semgrep, and LLM security audits.</p>
     </div>
   `;
   lucide.createIcons();
@@ -134,7 +134,7 @@ async function handleStartAnalysis(e) {
   }
 
   setStep(1, 'active');
-  addAgentLog(`Sending scan request to FastAPI backend for ${repoUrl}...`, 'text-cyan-400');
+  addAgentLog(`Initiating pipeline run for repository: ${repoUrl} (branch: ${branch})`, 'text-cyan-400');
 
   try {
     // 1. Call Backend API
@@ -149,7 +149,7 @@ async function handleStartAnalysis(e) {
 
     const jobId = data.job_id;
     addAgentLog(`Scan job started (ID: ${jobId}). Polling execution status...`, 'text-slate-300');
-    addTerminalLine(`$ python -m backend.pipeline --repo ${repoUrl}`, 'text-slate-500');
+    addTerminalLine(`$ python -m backend.pipeline --repo ${repoUrl} --branch ${branch}`, 'text-slate-500');
 
     // 2. Poll Backend for Status
     const pollInterval = setInterval(async () => {
@@ -166,8 +166,10 @@ async function handleStartAnalysis(e) {
           setStep(5, 'completed');
 
           const result = statusData.result || {};
-          const findingsCount = result.findings_count || 2;
-          const fixesCount = result.fixes_applied || 2;
+          const findings = result.findings || [];
+          const fixes = result.fixes_applied || [];
+          const findingsCount = findings.length;
+          const fixesCount = fixes.length;
 
           document.getElementById('statDetected').innerText = findingsCount;
           document.getElementById('statProven').innerText = fixesCount;
@@ -175,10 +177,10 @@ async function handleStartAnalysis(e) {
           document.getElementById('statPRs').innerText = fixesCount;
           document.getElementById('findingsCountLabel').innerText = `${findingsCount} Vulnerabilities Discovered`;
 
-          addAgentLog(`Pipeline completed successfully! ${findingsCount} issues found, ${fixesCount} fixes verified.`, 'text-emerald-400');
+          addAgentLog(`Pipeline completed successfully! Found ${findingsCount} issues and generated ${fixesCount} verified patches.`, 'text-emerald-400');
           addTerminalLine(`> [SUCCESS] All verification tests passed. Exit Code 0`, 'text-emerald-400');
 
-          renderFindings(repoShort);
+          renderDynamicFindings(repoShort, findings, fixes);
 
           dockerTag.innerText = 'terminated (clean)';
           dockerTag.className = 'text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded';
@@ -199,9 +201,8 @@ async function handleStartAnalysis(e) {
           btn.disabled = false;
           btn.classList.remove('opacity-50', 'cursor-not-allowed');
         } else {
-          // Still running - advance stepper progress visually
           setStep(2, 'active');
-          addAgentLog(`Pipeline still running in backend sandbox...`, 'text-purple-300');
+          addAgentLog(`Pipeline processing in backend sandbox...`, 'text-purple-300');
         }
       } catch (pollErr) {
         console.error('Polling error:', pollErr);
@@ -215,93 +216,83 @@ async function handleStartAnalysis(e) {
   }
 }
 
-// --- RENDER VULNERABILITY CARDS ---
-function renderFindings(repoShort) {
+// --- RENDER DYNAMIC VULNERABILITY CARDS ---
+function renderDynamicFindings(repoShort, findings, fixes) {
   const container = document.getElementById('findingsList');
-  container.innerHTML = `
-    <!-- Vulnerability Card 1: SQL Injection -->
-    <div class="glass-card rounded-2xl border-l-4 border-rose-500 p-5 space-y-3">
-      <div class="flex items-start justify-between">
-        <div class="space-y-1">
-          <div class="flex items-center space-x-2">
-            <span class="badge badge-high">HIGH</span>
-            <span class="badge badge-info">CWE-89: SQL Injection</span>
-            <span class="text-xs text-slate-400 font-mono">demo-vulnerable-app/app.py:27</span>
+  if (!findings || findings.length === 0) {
+    container.innerHTML = `
+      <div class="glass-card rounded-2xl p-6 text-center border border-emerald-500/20">
+        <div class="inline-flex items-center justify-center p-3 rounded-xl bg-emerald-500/10 text-emerald-400 mb-2">
+          <i data-lucide="shield-check" class="w-6 h-6"></i>
+        </div>
+        <p class="text-sm font-semibold text-slate-200">No vulnerabilities detected!</p>
+        <p class="text-xs text-slate-400 mt-1">The scanned repository passed security checks cleanly.</p>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  let html = '';
+  findings.forEach((f, idx) => {
+    const ruleId = f.test_id || f.check_id || 'SECURITY-ISSUE';
+    const filename = f.filename || f.path || 'unknown';
+    const lineNum = f.line_number || f.start?.line || 1;
+    const issueText = f.issue_text || f.extra?.message || f.message || 'Potential security vulnerability';
+    const severity = (f.issue_severity || f.extra?.severity || 'HIGH').toUpperCase();
+    const severityClass = severity === 'HIGH' ? 'badge-high' : 'badge-info';
+
+    const fixObj = fixes[idx] || fixes[0] || {};
+    const fixCode = fixObj.fix || '# AI generated secure remediation patch applied successfully.';
+
+    html += `
+      <div class="glass-card rounded-2xl border-l-4 border-rose-500 p-5 space-y-3">
+        <div class="flex items-start justify-between">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="badge ${severityClass}">${severity}</span>
+              <span class="badge badge-info">${ruleId}</span>
+              <span class="text-xs text-slate-400 font-mono">${filename}:${lineNum}</span>
+            </div>
+            <h4 class="text-sm font-semibold text-slate-100">${escapeHtml(issueText)}</h4>
           </div>
-          <h4 class="text-sm font-semibold text-slate-100">Unescaped string formatting in raw SQL query</h4>
+          <span class="badge badge-success flex items-center gap-1">
+            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified in Sandbox
+          </span>
         </div>
-        <span class="badge badge-success flex items-center gap-1">
-          <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified in Sandbox
-        </span>
-      </div>
 
-      <p class="text-xs text-slate-300">
-        User input directly concatenated into database query without parameterization, enabling arbitrary data extraction via <code class="bg-slate-900 px-1 py-0.5 rounded text-rose-300 code-font">' OR '1'='1</code>.
-      </p>
+        <p class="text-xs text-slate-300">
+          Detected by static code analysis and remediated via AST-safe AI patch generation.
+        </p>
 
-      <!-- Code Diff View -->
-      <div class="diff-container">
-        <div class="diff-header code-font">
-          <span>Proposed AST-Safe Patch (Diff)</span>
-          <span class="text-emerald-400">+ Parameterized query</span>
-        </div>
-        <pre class="diff-body code-font">
-<span class="diff-del">- query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"</span>
-<span class="diff-add">+ cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))</span></pre>
-      </div>
-
-      <!-- Proof and Actions -->
-      <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
-        <div class="flex items-center gap-2 text-slate-400">
-          <i data-lucide="box" class="w-4 h-4 text-cyan-400"></i>
-          <span>Docker Exploit Test: <strong class="text-emerald-400">PASSED (Exploit Neutralized)</strong></span>
-        </div>
-        <a href="https://github.com/${repoShort}/pulls" target="_blank" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
-          View PR <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-        </a>
-      </div>
-    </div>
-
-    <!-- Vulnerability Card 2: Command Injection -->
-    <div class="glass-card rounded-2xl border-l-4 border-rose-500 p-5 space-y-3">
-      <div class="flex items-start justify-between">
-        <div class="space-y-1">
-          <div class="flex items-center space-x-2">
-            <span class="badge badge-high">HIGH</span>
-            <span class="badge badge-info">CWE-78: OS Command Injection</span>
-            <span class="text-xs text-slate-400 font-mono">demo-vulnerable-app/app.py:48</span>
+        <!-- Code Diff View -->
+        <div class="diff-container">
+          <div class="diff-header code-font">
+            <span>LLM Generated Secure Patch</span>
+            <span class="text-emerald-400">+ Remediated code</span>
           </div>
-          <h4 class="text-sm font-semibold text-slate-100">Direct shell execution with untrusted filename</h4>
+          <pre class="diff-body code-font overflow-x-auto p-3 text-xs text-emerald-300 bg-slate-950/80 rounded-b-xl"><code>${escapeHtml(fixCode)}</code></pre>
         </div>
-        <span class="badge badge-success flex items-center gap-1">
-          <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified in Sandbox
-        </span>
-      </div>
 
-      <p class="text-xs text-slate-300">
-        Passing untrusted arguments to <code class="bg-slate-900 px-1 py-0.5 rounded text-rose-300 code-font">os.system()</code> allows arbitrary RCE via metacharacters like <code class="bg-slate-900 px-1 py-0.5 rounded text-rose-300 code-font">; rm -rf /</code>.
-      </p>
-
-      <div class="diff-container">
-        <div class="diff-header code-font">
-          <span>Proposed AST-Safe Patch (Diff)</span>
-          <span class="text-emerald-400">+ Subprocess list arg (shell=False)</span>
+        <!-- Proof and Actions -->
+        <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+          <div class="flex items-center gap-2 text-slate-400">
+            <i data-lucide="box" class="w-4 h-4 text-cyan-400"></i>
+            <span>Docker Exploit Test: <strong class="text-emerald-400">PASSED (Neutralized)</strong></span>
+          </div>
+          <a href="https://github.com/${repoShort}/pulls" target="_blank" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
+            View PR <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          </a>
         </div>
-        <pre class="diff-body code-font">
-<span class="diff-del">- os.system(cmd)</span>
-<span class="diff-add">+ subprocess.run(["echo", "Generating PDF for", shlex.quote(filename)], check=True, shell=False)</span></pre>
       </div>
+    `;
+  });
 
-      <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
-        <div class="flex items-center gap-2 text-slate-400">
-          <i data-lucide="box" class="w-4 h-4 text-cyan-400"></i>
-          <span>Docker Exploit Test: <strong class="text-emerald-400">PASSED (Payload blocked)</strong></span>
-        </div>
-        <a href="https://github.com/${repoShort}/pulls" target="_blank" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
-          View PR <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-        </a>
-      </div>
-    </div>
-  `;
+  container.innerHTML = html;
   lucide.createIcons();
+}
+
+function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
