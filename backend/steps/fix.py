@@ -9,11 +9,7 @@ def generate_fix(finding: dict, target_dir: str) -> str:
     code_snippet = ""
     if os.path.exists(file_path):
         with open(file_path, "r") as f:
-            lines = f.readlines()
-            line_no = finding.get("line_number", 1)
-            start = max(0, line_no - 5)
-            end = min(len(lines), line_no + 5)
-            code_snippet = "".join(lines[start:end])
+            code_snippet = f.read()
 
     prompt = FIX_PROMPT_TEMPLATE.format(
         rule_id=finding.get("test_id", "UNKNOWN"),

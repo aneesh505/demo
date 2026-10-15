@@ -280,7 +280,7 @@ function renderDynamicFindings(repoShort, findings, fixes) {
             <i data-lucide="box" class="w-4 h-4 text-cyan-400"></i>
             <span>Docker Exploit Test: <strong class="text-emerald-400">PASSED (Neutralized)</strong></span>
           </div>
-          <a href="https://github.com/${repoShort}/pulls" target="_blank" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
+          <a href="${fixObj.pr_url || `https://github.com/${repoShort}/pulls`}" target="_blank" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
             View PR <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
           </a>
         </div>

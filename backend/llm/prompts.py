@@ -1,5 +1,5 @@
 FIX_PROMPT_TEMPLATE = """
-You are an expert security engineer. You have been given a vulnerable code snippet identified by static analysis tools (Bandit/Semgrep).
+You are an expert security engineer. You have been given a vulnerable Python file identified by static analysis tools (Bandit/Semgrep).
 
 VULNERABILITY DETAILS:
 - Rule ID: {rule_id}
@@ -7,13 +7,13 @@ VULNERABILITY DETAILS:
 - File: {file_path}
 - Line: {line_number}
 
-VULNERABLE CODE:
+FULL FILE CONTENT:
 ```python
 {code_snippet}
 ```
 
 TASK:
-Provide a secure, robust, defense-in-depth code fix that eliminates the vulnerability without breaking existing functionality. Return ONLY the updated code block or python function.
+Provide a secure, robust, defense-in-depth code fix that eliminates the vulnerability without breaking existing functionality. Return ONLY the ENTIRE updated Python file content enclosed in ```python ... ``` code blocks. Do not omit any functions or imports.
 """
 
 EXPLOIT_PROMPT_TEMPLATE = """
@@ -24,6 +24,6 @@ VULNERABILITY:
 - Issue: {issue_text}
 - File: {file_path}
 
-Write a standalone pytest test function (e.g. `test_exploit_{rule_id}``) that sends a malicious payload (like SQL injection or command injection) to the app and asserts that the vulnerability is exploitable (e.g., receives 200 OK with leaked data instead of 401/400).
+Write a standalone pytest test function (e.g. `test_exploit_{rule_id}`) that sends a malicious payload (like SQL injection or command injection) to the app and asserts that the vulnerability is exploitable (e.g., receives 200 OK with leaked data instead of 401/400).
 Return ONLY executable python pytest code.
 """
