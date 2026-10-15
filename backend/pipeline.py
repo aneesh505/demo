@@ -71,10 +71,11 @@ def run_self_healing_pipeline(repo_url: str, branch: str = "main") -> dict:
 
     runner = DockerRunner()
 
-    # Step 1: Run baseline tests (using python -m to ensure proper import paths)
+    # Step 1: Run baseline tests (with pythonpath set so app can be imported)
     print("Running baseline tests...")
-    baseline_res = runner.run_command(workspace_dir, "pip install pytest flask requests && python -m pytest")
+    baseline_res = runner.run_command(workspace_dir, "python -m pytest")
     print(f"Baseline tests exit code: {baseline_res['exit_code']}")
+    print(f"Baseline output:\n{baseline_res['output']}")
 
     if baseline_res['exit_code'] != 0:
         print("Baseline tests failed. Aborting pipeline to prevent fixing broken code.")
