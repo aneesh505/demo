@@ -1,0 +1,287 @@
+{
+  "errors": [],
+  "generated_at": "2026-10-15T14:32:13Z",
+  "metrics": {
+    "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\app.py": {
+      "CONFIDENCE.HIGH": 2,
+      "CONFIDENCE.LOW": 1,
+      "CONFIDENCE.MEDIUM": 2,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 2,
+      "SEVERITY.LOW": 1,
+      "SEVERITY.MEDIUM": 2,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 48,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\tests\\test_app.py": {
+      "CONFIDENCE.HIGH": 5,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 2,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 7,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 30,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "_totals": {
+      "CONFIDENCE.HIGH": 7,
+      "CONFIDENCE.LOW": 1,
+      "CONFIDENCE.MEDIUM": 4,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 2,
+      "SEVERITY.LOW": 8,
+      "SEVERITY.MEDIUM": 2,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 78,
+      "nosec": 0,
+      "skipped_tests": 0
+    }
+  },
+  "results": [
+    {
+      "code": "3 import os\n4 import subprocess\n5 import shlex\n",
+      "col_offset": 0,
+      "end_col_offset": 17,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\app.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 78,
+        "link": "https://cwe.mitre.org/data/definitions/78.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Consider possible security implications associated with the subprocess module.",
+      "line_number": 4,
+      "line_range": [
+        4
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_imports.html#b404-import-subprocess",
+      "test_id": "B404",
+      "test_name": "blacklist"
+    },
+    {
+      "code": "28     # UNSECURE: Raw string formatting allows SQL Injection (' OR '1'='1)\n29     query = f\"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'\"\n30 \n",
+      "col_offset": 14,
+      "end_col_offset": 52,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\app.py",
+      "issue_confidence": "LOW",
+      "issue_cwe": {
+        "id": 89,
+        "link": "https://cwe.mitre.org/data/definitions/89.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Possible SQL injection vector through string-based query construction.",
+      "line_number": 29,
+      "line_range": [
+        29
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b608_hardcoded_sql_expressions.html",
+      "test_id": "B608",
+      "test_name": "hardcoded_sql_expressions"
+    },
+    {
+      "code": "50         cmd = f\"echo Generating PDF for {filename}\"\n51         os.system(cmd)  # Vulnerable to command injection via filename like 'report; id'\n52         return jsonify({\"status\": \"success\", \"message\": f\"Exported {filename}.pdf\"})\n",
+      "col_offset": 8,
+      "end_col_offset": 22,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\app.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 78,
+        "link": "https://cwe.mitre.org/data/definitions/78.html"
+      },
+      "issue_severity": "HIGH",
+      "issue_text": "Starting a process with a shell, possible injection detected, security issue.",
+      "line_number": 51,
+      "line_range": [
+        51
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b605_start_process_with_a_shell.html",
+      "test_id": "B605",
+      "test_name": "start_process_with_a_shell"
+    },
+    {
+      "code": "64 \n65     app.run(host='0.0.0.0', port=5000, debug=True)\n",
+      "col_offset": 4,
+      "end_col_offset": 50,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\app.py",
+      "issue_confidence": "MEDIUM",
+      "issue_cwe": {
+        "id": 94,
+        "link": "https://cwe.mitre.org/data/definitions/94.html"
+      },
+      "issue_severity": "HIGH",
+      "issue_text": "A Flask app appears to be run with debug=True, which exposes the Werkzeug debugger and allows the execution of arbitrary code.",
+      "line_number": 65,
+      "line_range": [
+        65
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b201_flask_debug_true.html",
+      "test_id": "B201",
+      "test_name": "flask_debug_true"
+    },
+    {
+      "code": "64 \n65     app.run(host='0.0.0.0', port=5000, debug=True)\n",
+      "col_offset": 17,
+      "end_col_offset": 26,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\app.py",
+      "issue_confidence": "MEDIUM",
+      "issue_cwe": {
+        "id": 605,
+        "link": "https://cwe.mitre.org/data/definitions/605.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Possible binding to all interfaces.",
+      "line_number": 65,
+      "line_range": [
+        65
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b104_hardcoded_bind_all_interfaces.html",
+      "test_id": "B104",
+      "test_name": "hardcoded_bind_all_interfaces"
+    },
+    {
+      "code": "26     res = client.get('/')\n27     assert res.status_code == 200\n28     assert b\"Vulnerable App running\" in res.data\n",
+      "col_offset": 4,
+      "end_col_offset": 33,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\tests\\test_app.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 27,
+      "line_range": [
+        27
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "27     assert res.status_code == 200\n28     assert b\"Vulnerable App running\" in res.data\n29 \n",
+      "col_offset": 4,
+      "end_col_offset": 48,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\tests\\test_app.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 28,
+      "line_range": [
+        28
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "30 def test_valid_login(client):\n31     res = client.post('/login', json={'username': 'admin', 'password': 'secret123'})\n32     assert res.status_code == 200\n",
+      "col_offset": 59,
+      "end_col_offset": 69,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\tests\\test_app.py",
+      "issue_confidence": "MEDIUM",
+      "issue_cwe": {
+        "id": 259,
+        "link": "https://cwe.mitre.org/data/definitions/259.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Possible hardcoded password: 'secret123'",
+      "line_number": 31,
+      "line_range": [
+        31
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html",
+      "test_id": "B105",
+      "test_name": "hardcoded_password_string"
+    },
+    {
+      "code": "31     res = client.post('/login', json={'username': 'admin', 'password': 'secret123'})\n32     assert res.status_code == 200\n33     assert b\"Welcome back\" in res.data\n",
+      "col_offset": 4,
+      "end_col_offset": 33,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\tests\\test_app.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 32,
+      "line_range": [
+        32
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "32     assert res.status_code == 200\n33     assert b\"Welcome back\" in res.data\n34 \n",
+      "col_offset": 4,
+      "end_col_offset": 38,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\tests\\test_app.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 33,
+      "line_range": [
+        33
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    },
+    {
+      "code": "35 def test_invalid_login(client):\n36     res = client.post('/login', json={'username': 'admin', 'password': 'wrong'})\n37     assert res.status_code == 401\n",
+      "col_offset": 59,
+      "end_col_offset": 69,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\tests\\test_app.py",
+      "issue_confidence": "MEDIUM",
+      "issue_cwe": {
+        "id": 259,
+        "link": "https://cwe.mitre.org/data/definitions/259.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Possible hardcoded password: 'wrong'",
+      "line_number": 36,
+      "line_range": [
+        36
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html",
+      "test_id": "B105",
+      "test_name": "hardcoded_password_string"
+    },
+    {
+      "code": "36     res = client.post('/login', json={'username': 'admin', 'password': 'wrong'})\n37     assert res.status_code == 401\n",
+      "col_offset": 4,
+      "end_col_offset": 33,
+      "filename": "C:\\Users\\suvar\\OneDrive\\Documents\\GitHub\\demo\\demo-vulnerable-app\\tests\\test_app.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 703,
+        "link": "https://cwe.mitre.org/data/definitions/703.html"
+      },
+      "issue_severity": "LOW",
+      "issue_text": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "line_number": 37,
+      "line_range": [
+        37
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+      "test_id": "B101",
+      "test_name": "assert_used"
+    }
+  ]
+}

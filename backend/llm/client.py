@@ -12,7 +12,7 @@ class LLMClient:
 
     def query(self, prompt: str, system_prompt: str = "You are an expert DevSecOps and security engineering AI.") -> str:
         if not self.client:
-            return "Mock LLM response: def secure_function(): pass"
+            raise ValueError("ANTHROPIC_API_KEY is not set or client is not initialized. Please configure ANTHROPIC_API_KEY in your environment or .env file.")
 
         try:
             response = self.client.messages.create(

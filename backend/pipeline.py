@@ -1,33 +1,42 @@
 import os
 import shutil
+import stat
+import argparse
+import subprocess
 from backend.steps.scan import run_bandit, run_semgrep
 from backend.sandbox.docker_runner import DockerRunner
 from backend.steps.fix import generate_fix
+
+def force_remove_readonly(func, path, excinfo):
+    """Helper to force delete read-only files on Windows."""
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 def run_self_healing_pipeline(repo_url: str, branch: str = "main") -> dict:
     print(f"Starting self-healing pipeline for {repo_url} (branch: {branch})")
 
     # Setup temp workspace
     workspace_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../sandbox_workspaces/target_repo"))
+    
+    # Use the onerror handler to bypass Windows read-only locks on .git folders
     if os.path.exists(workspace_dir):
-        shutil.rmtree(workspace_dir, ignore_errors=True)
+        shutil.rmtree(workspace_dir, onerror=force_remove_readonly)
     os.makedirs(workspace_dir, exist_ok=True)
 
-    # For demo, if repo_url points to demo-vulnerable-app or is local, copy it over
-    demo_app_src = os.path.abspath(os.path.join(os.path.dirname(__file__), "../demo-vulnerable-app"))
-    if os.path.exists(demo_app_src):
-        shutil.copytree(demo_app_src, workspace_dir, dirs_exist_ok=True)
-    else:
-        # Clone repo
-        import subprocess
-        subprocess.run(["git", "clone", "--depth", "1", "-b", branch, repo_url, workspace_dir], check=True)
+    # Force git clone of the provided URL
+    print(f"Cloning {repo_url}...")
+    subprocess.run(["git", "clone", "--depth", "1", "-b", branch, repo_url, workspace_dir], check=True)
 
     runner = DockerRunner()
 
-    # Step 1: Run baseline tests
+    # Step 1: Run baseline tests (using python -m to ensure proper import paths)
     print("Running baseline tests...")
-    baseline_res = runner.run_command(workspace_dir, "pip install pytest flask requests && pytest")
+    baseline_res = runner.run_command(workspace_dir, "pip install pytest flask requests && python -m pytest")
     print(f"Baseline tests exit code: {baseline_res['exit_code']}")
+    
+    if baseline_res['exit_code'] != 0:
+        print("Baseline tests failed. Aborting pipeline to prevent fixing broken code.")
+        return {"status": "failed", "reason": "Baseline tests failed", "baseline_tests": baseline_res}
 
     # Step 2: Scan findings
     print("Running security scanners (Bandit & Semgrep)...")
@@ -46,7 +55,7 @@ def run_self_healing_pipeline(repo_url: str, branch: str = "main") -> dict:
 
     # Step 4: Verify via regression tests
     print("Running regression test suite...")
-    verify_res = runner.run_command(workspace_dir, "pytest")
+    verify_res = runner.run_command(workspace_dir, "python -m pytest")
     print(f"Verification exit code: {verify_res['exit_code']}")
 
     return {
@@ -58,5 +67,10 @@ def run_self_healing_pipeline(repo_url: str, branch: str = "main") -> dict:
     }
 
 if __name__ == "__main__":
-    res = run_self_healing_pipeline("https://github.com/demo/vulnerable-app")
+    parser = argparse.ArgumentParser(description="Run the self-healing security pipeline.")
+    parser.add_argument("--repo", type=str, required=True, help="URL of the target GitHub repository")
+    parser.add_argument("--branch", type=str, default="main", help="Branch to analyze (default: main)")
+    args = parser.parse_args()
+
+    res = run_self_healing_pipeline(args.repo, args.branch)
     print(res)
