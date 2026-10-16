@@ -28,4 +28,4 @@ class LLMClient:
             )
             return response.choices[0].message.content
         except Exception as e:
-            return f"Error querying LLM: {e}"
+            raise RuntimeError(f"LLM generation failed: {e}")

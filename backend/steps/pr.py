@@ -14,7 +14,7 @@ def create_pull_request(repo_url: str, branch_name: str, title: str, body: str) 
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         print("GitHub token not configured. Skipping PR creation.")
-        return "https://github.com/mock-pr-url"
+        return ""
 
     g = Github(token)
     user = g.get_user()

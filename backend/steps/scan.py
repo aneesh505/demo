@@ -15,7 +15,18 @@ def run_bandit(target_dir: str) -> list:
         if os.path.exists(output_file):
             with open(output_file, "r") as f:
                 data = json.load(f)
-                return data.get("results", [])
+                results = data.get("results", [])
+                # Normalize filename to relative path from target_dir so callers
+                # can consistently join it with workspace paths
+                norm_target = os.path.abspath(target_dir)
+                for r in results:
+                    fn = r.get("filename", "")
+                    if fn and os.path.isabs(fn):
+                        try:
+                            r["filename"] = os.path.relpath(fn, norm_target)
+                        except ValueError:
+                            pass
+                return results
     except Exception as e:
         print(f"Error running bandit: {e}")
     return []

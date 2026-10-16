@@ -157,49 +157,91 @@ async function handleStartAnalysis(e) {
         const statusRes = await fetch(`/api/runs/${jobId}`);
         const statusData = await statusRes.json();
 
-        if (statusData.status === 'completed') {
+        const status = statusData.status;
+
+        if (status === 'completed' || status === 'clean' || status === 'failed' || status === 'patch_failed') {
           clearInterval(pollInterval);
-          setStep(1, 'completed');
-          setStep(2, 'completed');
-          setStep(3, 'completed');
-          setStep(4, 'completed');
-          setStep(5, 'completed');
+          btn.disabled = false;
+          btn.classList.remove('opacity-50', 'cursor-not-allowed');
 
           const result = statusData.result || {};
           const findings = result.findings || [];
           const fixes = result.fixes_applied || [];
           const findingsCount = findings.length;
-          const fixesCount = fixes.length;
+          const verifiedFixes = fixes.filter(f => f.applied);
+          const prCount = (result.pr_url && result.pr_url !== 'https://github.com/mock-pr-url') ? 1 : 0;
+          const verify = result.verification || {};
+          const verifyExitCode = (verify.exit_code !== undefined) ? verify.exit_code : -1;
+          const testsPassed = (verifyExitCode === 0);
 
+          // Update real counters
           document.getElementById('statDetected').innerText = findingsCount;
-          document.getElementById('statProven').innerText = fixesCount;
-          document.getElementById('statRetries').innerText = '0';
-          document.getElementById('statPRs').innerText = fixesCount;
+          document.getElementById('statProven').innerText = testsPassed ? verifiedFixes.length : 0;
+          document.getElementById('statRetries').innerText = status === 'patch_failed' ? fixes.length : '0';
+          document.getElementById('statPRs').innerText = prCount;
           document.getElementById('findingsCountLabel').innerText = `${findingsCount} Vulnerabilities Discovered`;
 
-          addAgentLog(`Pipeline completed successfully! Found ${findingsCount} issues and generated ${fixesCount} verified patches.`, 'text-emerald-400');
-          addTerminalLine(`> [SUCCESS] All verification tests passed. Exit Code 0`, 'text-emerald-400');
+          // Stream verification output into sandbox console
+          if (verify.output) {
+            addTerminalLine('--- Regression Test Output ---', 'text-slate-500');
+            verify.output.split('\n').filter(Boolean).slice(-10).forEach(line => {
+              addTerminalLine(line, testsPassed ? 'text-slate-300' : 'text-rose-300');
+            });
+          }
 
-          renderDynamicFindings(repoShort, findings, fixes);
+          if (status === 'clean') {
+            setStep(1, 'completed');
+            setStep(2, 'completed');
+            setStep(3, 'completed');
+            setStep(4, 'completed');
+            setStep(5, 'completed');
 
-          dockerTag.innerText = 'terminated (clean)';
-          dockerTag.className = 'text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded';
+            addAgentLog(`Clean scan: 0 vulnerabilities found in repository.`, 'text-emerald-400');
+            addTerminalLine(`> [CLEAN] Security scan passed with 0 findings.`, 'text-emerald-400');
+            dockerTag.innerText = 'idle';
+            dockerTag.className = 'text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded';
+            livePulse.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+            liveText.innerText = 'Repo Clean';
+            liveText.className = 'text-xs font-mono text-emerald-400 uppercase';
+            renderDynamicFindings(repoShort, [], []);
+            return;
+          }
 
-          livePulse.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
-          liveText.innerText = 'Remediation Complete';
-          liveText.className = 'text-xs font-mono text-emerald-400 uppercase';
+          if (status === 'completed' && testsPassed) {
+            setStep(1, 'completed');
+            setStep(2, 'completed');
+            setStep(3, 'completed');
+            setStep(4, 'completed');
+            setStep(5, prCount > 0 ? 'completed' : 'active');
 
-          btn.disabled = false;
-          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            addAgentLog(`Remediation verified! ${verifiedFixes.length} patches applied, regression tests exit code 0.`, 'text-emerald-400');
+            addTerminalLine(`> [SUCCESS] Regression test suite passed (exit code 0).`, 'text-emerald-400');
+            dockerTag.innerText = 'verified (exit 0)';
+            dockerTag.className = 'text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded';
+            livePulse.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+            liveText.innerText = 'Remediated & Verified';
+            liveText.className = 'text-xs font-mono text-emerald-400 uppercase';
+          } else {
+            // Failed verification or patch failure
+            setStep(1, 'completed');
+            setStep(2, 'completed');
+            setStep(3, status === 'patch_failed' ? 'active' : 'completed');
+            setStep(4, 'active');
 
-        } else if (statusData.status === 'failed') {
-          clearInterval(pollInterval);
-          addAgentLog(`Pipeline failed: ${statusData.error}`, 'text-rose-400');
-          addTerminalLine(`> [ERROR] ${statusData.error}`, 'text-rose-400');
-          liveText.innerText = 'Pipeline Failed';
-          liveText.className = 'text-xs font-mono text-rose-400 uppercase';
-          btn.disabled = false;
-          btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            const reason = statusData.error || (status === 'patch_failed'
+              ? 'LLM patch generation failed or returned invalid code.'
+              : `Regression test failed with exit code ${verifyExitCode}. Patch rejected.`);
+
+            addAgentLog(`Pipeline halted: ${reason}`, 'text-rose-400');
+            addTerminalLine(`> [FAILURE] ${reason}`, 'text-rose-400');
+            dockerTag.innerText = `failed (exit ${verifyExitCode})`;
+            dockerTag.className = 'text-[10px] font-mono text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded';
+            livePulse.className = 'w-2.5 h-2.5 rounded-full bg-rose-400';
+            liveText.innerText = 'Verification Failed';
+            liveText.className = 'text-xs font-mono text-rose-400 uppercase';
+          }
+
+          renderDynamicFindings(repoShort, findings, fixes, testsPassed, result.pr_url);
         } else {
           setStep(2, 'active');
           addAgentLog(`Pipeline processing in backend sandbox...`, 'text-purple-300');
@@ -207,7 +249,7 @@ async function handleStartAnalysis(e) {
       } catch (pollErr) {
         console.error('Polling error:', pollErr);
       }
-    }, 3000);
+    }, 2500);
 
   } catch (err) {
     addAgentLog(`Error connecting to backend: ${err.message}`, 'text-rose-400');
@@ -217,7 +259,7 @@ async function handleStartAnalysis(e) {
 }
 
 // --- RENDER DYNAMIC VULNERABILITY CARDS ---
-function renderDynamicFindings(repoShort, findings, fixes) {
+function renderDynamicFindings(repoShort, findings, fixes, testsPassed = false, prUrl = null) {
   const container = document.getElementById('findingsList');
   if (!findings || findings.length === 0) {
     container.innerHTML = `
@@ -242,11 +284,103 @@ function renderDynamicFindings(repoShort, findings, fixes) {
     const severity = (f.issue_severity || f.extra?.severity || 'HIGH').toUpperCase();
     const severityClass = severity === 'HIGH' ? 'badge-high' : 'badge-info';
 
-    const fixObj = fixes[idx] || fixes[0] || {};
-    const fixCode = fixObj.fix || '# AI generated secure remediation patch applied successfully.';
+    // Find if a fix attempt matched this finding
+    const fixObj = fixes.find(fx => {
+      const fRule = fx.finding?.test_id;
+      const fLine = fx.finding?.line_number;
+      return fRule === ruleId && fLine === lineNum;
+    }) || fixes[idx];
+
+    const wasApplied = Boolean(fixObj && fixObj.applied);
+    const hasError = Boolean(fixObj && fixObj.error);
+    const isVerified = wasApplied && testsPassed;
+
+    // Build badge HTML based on actual status
+    let verificationBadge = '';
+    if (isVerified) {
+      verificationBadge = `
+        <span class="badge badge-success flex items-center gap-1">
+          <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified in Sandbox
+        </span>
+      `;
+    } else if (hasError) {
+      verificationBadge = `
+        <span class="badge badge-high flex items-center gap-1">
+          <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Patch Generation Failed
+        </span>
+      `;
+    } else if (wasApplied && !testsPassed) {
+      verificationBadge = `
+        <span class="badge badge-high flex items-center gap-1">
+          <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Regression Failed (Reverted)
+        </span>
+      `;
+    } else {
+      verificationBadge = `
+        <span class="badge badge-info flex items-center gap-1">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i> Detected (Unpatched)
+        </span>
+      `;
+    }
+
+    // Build diff/remediation view
+    let diffViewHtml = '';
+    if (isVerified && fixObj && fixObj.fix) {
+      diffViewHtml = `
+        <div class="diff-container">
+          <div class="diff-header code-font">
+            <span>LLM Generated Secure Patch</span>
+            <span class="text-emerald-400">+ Remediated code (Passed Tests)</span>
+          </div>
+          <pre class="diff-body code-font overflow-x-auto p-3 text-xs text-emerald-300 bg-slate-950/80 rounded-b-xl"><code>${escapeHtml(fixObj.fix)}</code></pre>
+        </div>
+      `;
+    } else if (hasError) {
+      diffViewHtml = `
+        <div class="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 space-y-1">
+          <div class="flex items-center gap-2 font-semibold">
+            <i data-lucide="alert-octagon" class="w-4 h-4 text-rose-400"></i> Remediation Failed
+          </div>
+          <p class="font-mono text-[11px] text-rose-400 break-words">${escapeHtml(fixObj.error)}</p>
+        </div>
+      `;
+    } else if (wasApplied && !testsPassed) {
+      diffViewHtml = `
+        <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+          <p class="font-semibold">Patch broke existing tests — reverted to preserve repository stability.</p>
+        </div>
+      `;
+    } else {
+      diffViewHtml = `
+        <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-xs text-slate-400 italic">
+          Vulnerability flagged for developer manual review.
+        </div>
+      `;
+    }
+
+    // Build footer status & PR link
+    const testStatusText = isVerified
+      ? `<strong class="text-emerald-400">PASSED (Neutralized)</strong>`
+      : (hasError || !testsPassed
+          ? `<strong class="text-rose-400">FAILED (Vulnerability Active)</strong>`
+          : `<span class="text-slate-400">Not Verified</span>`);
+
+    let prActionHtml = '';
+    const validPrUrl = prUrl || fixObj?.pr_url;
+    if (validPrUrl && validPrUrl !== 'https://github.com/mock-pr-url') {
+      prActionHtml = `
+        <a href="${validPrUrl}" target="_blank" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
+          View PR <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+        </a>
+      `;
+    } else {
+      prActionHtml = `
+        <span class="text-slate-500 italic">No PR created (sandbox only)</span>
+      `;
+    }
 
     html += `
-      <div class="glass-card rounded-2xl border-l-4 border-rose-500 p-5 space-y-3">
+      <div class="glass-card rounded-2xl border-l-4 ${isVerified ? 'border-emerald-500' : 'border-rose-500'} p-5 space-y-3">
         <div class="flex items-start justify-between">
           <div class="space-y-1">
             <div class="flex items-center space-x-2">
@@ -256,33 +390,25 @@ function renderDynamicFindings(repoShort, findings, fixes) {
             </div>
             <h4 class="text-sm font-semibold text-slate-100">${escapeHtml(issueText)}</h4>
           </div>
-          <span class="badge badge-success flex items-center gap-1">
-            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verified in Sandbox
-          </span>
+          ${verificationBadge}
         </div>
 
         <p class="text-xs text-slate-300">
-          Detected by static code analysis and remediated via AST-safe AI patch generation.
+          ${isVerified
+            ? 'Static analysis finding remediated and verified through regression tests.'
+            : 'Static analysis finding active in repository.'}
         </p>
 
-        <!-- Code Diff View -->
-        <div class="diff-container">
-          <div class="diff-header code-font">
-            <span>LLM Generated Secure Patch</span>
-            <span class="text-emerald-400">+ Remediated code</span>
-          </div>
-          <pre class="diff-body code-font overflow-x-auto p-3 text-xs text-emerald-300 bg-slate-950/80 rounded-b-xl"><code>${escapeHtml(fixCode)}</code></pre>
-        </div>
+        <!-- Dynamic Diff or Error View -->
+        ${diffViewHtml}
 
         <!-- Proof and Actions -->
         <div class="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
           <div class="flex items-center gap-2 text-slate-400">
-            <i data-lucide="box" class="w-4 h-4 text-cyan-400"></i>
-            <span>Docker Exploit Test: <strong class="text-emerald-400">PASSED (Neutralized)</strong></span>
+            <i data-lucide="shield" class="w-4 h-4 ${isVerified ? 'text-emerald-400' : 'text-rose-400'}"></i>
+            <span>Exploit / Regression Status: ${testStatusText}</span>
           </div>
-          <a href="${fixObj.pr_url || `https://github.com/${repoShort}/pulls`}" target="_blank" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium">
-            View PR <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-          </a>
+          ${prActionHtml}
         </div>
       </div>
     `;

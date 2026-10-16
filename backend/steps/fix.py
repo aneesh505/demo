@@ -4,7 +4,11 @@ from backend.llm.prompts import FIX_PROMPT_TEMPLATE
 
 def generate_fix(finding: dict, target_dir: str) -> str:
     llm = LLMClient()
-    file_path = os.path.join(target_dir, finding.get("filename", ""))
+    rel_filename = finding.get("filename", "")
+    if os.path.isabs(rel_filename):
+        file_path = rel_filename
+    else:
+        file_path = os.path.join(target_dir, rel_filename)
 
     code_snippet = ""
     if os.path.exists(file_path):
